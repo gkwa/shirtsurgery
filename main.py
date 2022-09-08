@@ -3,13 +3,13 @@ import json
 import logging
 import pathlib
 import re
+import stat
 import sys
 
 import aws_regions.endpoints
 import boto3
 import botocore.exceptions
 import ndjson
-import yaml
 
 self_path = pathlib.Path(__file__)
 
@@ -98,7 +98,6 @@ for dct in cdi_images:
     cdi2.append(x)
 
 pathlib.Path("doc.json").write_text(json.dumps(cdi2, indent=2))
-pathlib.Path("doc.yaml").write_text(yaml.dump(cdi2))
 
 with open("doc.ndjson", "w") as f:
     ndjson.dump(cdi2, f)
@@ -112,3 +111,26 @@ with open("doc.ts", "w") as ts:
             y = re.sub("^{", "", y)
             y = re.sub("}$", "", y)
             ts.write(f"{y},\n")
+
+compath = pathlib.Path("commmands.sh")
+
+make_public = []
+make_private = []
+
+with open(compath, "w") as com:
+    for dct in cdi2:
+        for region in dct:
+            ami = dct[region]["ami"]
+            public = f"aws ec2 modify-image-attribute --region {region} --image-id {ami} --launch-permission 'Add=[{{Group=all}}]'"  # noqa: E501
+            private = f"aws ec2 modify-image-attribute --region {region} --image-id {ami} --launch-permission 'Remove=[{{Group=all}}]'"  # noqa: E501
+            make_public.append(public)
+            make_private.append(private)
+
+    for cmd in make_public:
+        com.write(f"{cmd}\n")
+
+    for cmd in make_private:
+        com.write(f"#{cmd}\n")
+
+
+compath.chmod(path.stat().st_mode | stat.S_IEXEC)
