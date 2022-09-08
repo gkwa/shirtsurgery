@@ -84,6 +84,7 @@ logging.debug(json.dumps(records, indent=2))
 logging.debug(json.dumps(sorted([x["ami"] for x in records])))
 
 ami_filter = "sbx-cdi 2022-08-10T01-52-35.178Z"
+ami_filter = "sbx-cdi 2022-09-07T22-23-09.989Z"
 
 cdi_images = list(filter(lambda x: ami_filter in x["ami"], records))
 cdi_images = sorted(cdi_images, key=lambda i: (i["ami"], i["region"]), reverse=True)
@@ -94,4 +95,8 @@ for dct in cdi_images:
     cdi2[region] = {"ami": dct["ami_id"]}
 
 out = yaml.dump(cdi2)
-print(out)
+outjson = json.dumps(cdi2, indent=2)
+doc2 = pathlib.Path("doc.json")
+doc2.write_text(outjson)
+doc1 = pathlib.Path("doc.yaml")
+doc1.write_text(out)
