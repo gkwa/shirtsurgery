@@ -2,11 +2,13 @@ import argparse
 import json
 import logging
 import pathlib
+import re
 import sys
 
 import aws_regions.endpoints
 import boto3
 import botocore.exceptions
+import ndjson
 import yaml
 
 self_path = pathlib.Path(__file__)
@@ -89,14 +91,24 @@ ami_filter = "sbx-cdi 2022-09-07T22-23-09.989Z"
 cdi_images = list(filter(lambda x: ami_filter in x["ami"], records))
 cdi_images = sorted(cdi_images, key=lambda i: (i["ami"], i["region"]), reverse=True)
 
-cdi2 = {}
+cdi2 = []
 for dct in cdi_images:
     region = dct["region"]
-    cdi2[region] = {"ami": dct["ami_id"]}
+    x = {region: {"ami": dct["ami_id"]}}
+    cdi2.append(x)
 
-out = yaml.dump(cdi2)
-outjson = json.dumps(cdi2, indent=2)
-doc2 = pathlib.Path("doc.json")
-doc2.write_text(outjson)
-doc1 = pathlib.Path("doc.yaml")
-doc1.write_text(out)
+pathlib.Path("doc.json").write_text(json.dumps(cdi2, indent=2))
+pathlib.Path("doc.yaml").write_text(yaml.dump(cdi2))
+
+with open("doc.ndjson", "w") as f:
+    ndjson.dump(cdi2, f)
+
+with open("doc.ts", "w") as ts:
+    with open("doc.ndjson") as f:
+        reader = ndjson.reader(f)
+
+        for post in reader:
+            y = str(post)
+            y = re.sub("^{", "", y)
+            y = re.sub("}$", "", y)
+            ts.write(f"{y},\n")
